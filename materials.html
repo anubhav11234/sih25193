@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Inventory - GridCast AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="{{ url_for('dashboard') }}" class="nav-brand">GridCast AI ⚡️</a>
+        <div class="nav-links">
+            {% if session.username %}
+                <span style="margin-right: 20px; color: var(--text-muted);">Welcome, <strong>{{ session.username }}</strong>!</span>
+                <a href="{{ url_for('dashboard') }}">Home</a>
+                <a href="{{ url_for('projects') }}">Projects</a>
+                <a href="{{ url_for('materials') }}" class="active">Materials</a>
+                <a href="{{ url_for('forecasting') }}">Optimization</a>
+                <a href="{{ url_for('settings') }}">Settings</a>
+                <a href="{{ url_for('logout') }}" style="background-color: #c9302c; color: white;">Logout</a>
+            {% endif %}
+            <div class="theme-switcher">
+                <span>☀️</span><label class="switch"><input type="checkbox" id="theme-toggle"><span class="slider"></span></label><span>🌙</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header class="page-header">
+            <h1>Material Inventory</h1>
+            <p>Manage and monitor core material stock levels and suppliers.</p>
+        </header>
+
+        <div class="search-container">
+            <input type="text" id="materialSearch" placeholder="🔍 Search materials by name or category...">
+        </div>
+
+        <div class="material-grid">
+            {% for material in materials %}
+            <div class="material-card">
+                <div class="material-card-header">
+                    <h3>{{ material.name }} ({{ material.unit }})</h3>
+                    <span class="status-badge status-{{ material.status.lower().replace(' ', '-') }}">{{ material.status }}</span>
+                </div>
+                <p class="material-category">{{ material.category }}</p>
+                <div class="material-details">
+                    <div><span>Current Stock:</span><strong>{{ material.stock }} {{ material.unit }}</strong></div>
+                    <div><span>Reorder Level:</span><strong>{{ material.reorder_level }} {{ material.unit }}</strong></div>
+                    <div><span>Live Unit Cost:</span><strong>₹{{ '{:,.0f}'.format(material.cost) }}</strong></div>
+                    <div><span>Supplier:</span><strong>{{ material.supplier }}</strong></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Search filter logic
+            document.getElementById('materialSearch').addEventListener('keyup', function() {
+                const filter = this.value.toUpperCase();
+                const cards = document.querySelectorAll('.material-card');
+                cards.forEach(card => {
+                    if (card.innerText.toUpperCase().indexOf(filter) > -1) {
+                        card.style.display = "";
+                    } else {
+                        card.style.display = "none";
+                    }
+                });
+            });
+
+            // --- THIS IS THE FIX ---
+            // Theme Switcher Logic
+            const themeToggle = document.getElementById('theme-toggle');
+            const currentTheme = localStorage.getItem('theme');
+
+            function applyTheme(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                if (theme === 'dark') {
+                    themeToggle.checked = true;
+                } else {
+                    themeToggle.checked = false;
+                }
+            }
+
+            if (currentTheme) {
+                applyTheme(currentTheme);
+            }
+
+            themeToggle.addEventListener('change', function() {
+                let theme = 'light';
+                if (this.checked) {
+                    theme = 'dark';
+                }
+                applyTheme(theme);
+                localStorage.setItem('theme', theme);
+            });
+            // --- END OF FIX ---
+        });
+    </script>
+</body>
+</html>

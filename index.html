@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GridCast AI - Home</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="{{ url_for('dashboard') }}" class="nav-brand">GridCast AI ⚡️</a>
+        <div class="nav-links">
+            {% if session.username %}
+                <span style="margin-right: 20px; color: var(--text-muted);">Welcome, <strong>{{ session.username }}</strong>!</span>
+                <a href="{{ url_for('dashboard') }}" class="active">Home</a>
+                <a href="{{ url_for('projects') }}">Projects</a>
+                <a href="{{ url_for('materials') }}">Materials</a>
+                <a href="{{ url_for('forecasting') }}">Optimization</a>
+                <a href="{{ url_for('settings') }}">Settings</a>
+                <a href="{{ url_for('logout') }}" style="background-color: #c9302c; color: white;">Logout</a>
+            {% endif %}
+            <div class="theme-switcher">
+                <span>☀️</span><label class="switch"><input type="checkbox" id="theme-toggle"><span class="slider"></span></label><span>🌙</span>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <header class="main-header">
+            <h1>Intelligent Supply Chain for India's Power Grid</h1>
+            <p>Leveraging AI to forecast material demand, optimize inventory, and ensure timely project completion for POWERGRID.</p>
+        </header>
+
+        <section class="dashboard">
+            <h2>At a Glance</h2>
+            <div class="stats-grid">
+                <div class="stat-card"><span class="icon">🏗️</span><div><h3>Total Projects</h3><p>{{ total_projects }}</p></div></div>
+                <div class="stat-card"><span class="icon">⚙️</span><div><h3>Ongoing Projects</h3><p>{{ ongoing_projects }}</p></div></div>
+                <div class="stat-card"><span class="icon">💰</span><div><h3>Total Budget Allocated</h3><p>₹{{ total_budget | int }} Cr</p></div></div>
+                <div class="stat-card"><span class="icon">🎯</span><div><h3>Model Accuracy (R²)</h3><p>~93%</p></div></div>
+            </div>
+        </section>
+        
+        <section>
+            <h2>Project Budget Distribution (in ₹ Crores)</h2>
+            <div class="chart-container" style="position: relative; height:40vh; width:100%; max-width: 900px; margin: auto;">
+                <canvas id="budgetChart"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const themeToggle = document.getElementById('theme-toggle'); const currentTheme = localStorage.getItem('theme'); function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme); if (theme === 'dark') { themeToggle.checked = true; } else { themeToggle.checked = false; } } if (currentTheme) { applyTheme(currentTheme); }
+            const lightModeColor = '#6c757d'; const darkModeColor = '#c9d1d9';
+            const ctx = document.getElementById('budgetChart').getContext('2d');
+            const budgetChart = new Chart(ctx, {
+                type: 'bar', data: { labels: {{ chart_labels | safe }}, datasets: [{ label: 'Budget in ₹ Crores', data: {{ chart_data | safe }}, backgroundColor: 'rgba(0, 90, 156, 0.7)', borderColor: 'rgba(0, 90, 156, 1)', borderWidth: 1, borderRadius: 5 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: document.documentElement.getAttribute('data-theme') === 'dark' ? darkModeColor : lightModeColor, callback: function(value) { return '₹' + value + ' Cr'; } }, grid: { color: document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' } }, x: { ticks: { color: document.documentElement.getAttribute('data-theme') === 'dark' ? darkModeColor : lightModeColor }, grid: { display: false } } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { return context.dataset.label + ': ₹' + context.raw.toLocaleString('en-IN') + ' Cr'; } } } } }
+            });
+            themeToggle.addEventListener('change', function() {
+                let theme = this.checked ? 'dark' : 'light'; applyTheme(theme); localStorage.setItem('theme', theme);
+                const newColor = theme === 'dark' ? darkModeColor : lightModeColor; const newGridColor = theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                budgetChart.options.scales.y.ticks.color = newColor; budgetChart.options.scales.x.ticks.color = newColor; budgetChart.options.scales.y.grid.color = newGridColor;
+                budgetChart.update();
+            });
+        });
+    </script>
+</body>
+</html>
