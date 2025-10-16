@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - GridCast AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="{{ url_for('dashboard') }}" class="nav-brand">GridCast AI ⚡️</a>
+        <div class="nav-links">
+            {% if session.username %}
+                <span style="margin-right: 20px; color: var(--text-muted);">Welcome, <strong>{{ session.username }}</strong>!</span>
+                <a href="{{ url_for('dashboard') }}">Home</a>
+                <a href="{{ url_for('projects') }}">Projects</a>
+                <a href="{{ url_for('materials') }}">Materials</a>
+                <a href="{{ url_for('forecasting') }}">Optimization</a>
+                <a href="{{ url_for('settings') }}" class="active">Settings</a>
+                <a href="{{ url_for('logout') }}" style="background-color: #c9302c; color: white;">Logout</a>
+            {% endif %}
+            <div class="theme-switcher">
+                <span>☀️</span><label class="switch"><input type="checkbox" id="theme-toggle"><span class="slider"></span></label><span>🌙</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header class="page-header">
+            <h1>Settings</h1>
+            <p>Manage your account settings and notification preferences.</p>
+        </header>
+
+        <div class="settings-container">
+            <div class="settings-card">
+                <h3>Notification Settings</h3>
+                <p>Configure how you want to receive system notifications.</p>
+                <div class="notification-item">
+                    <span>Email Notifications</span>
+                    <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+                <div class="notification-item">
+                    <span>SMS Notifications</span>
+                    <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+                </div>
+                <div class="notification-item">
+                    <span>Low Stock Alerts</span>
+                    <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+                <div class="notification-item">
+                    <span>Forecast Alerts</span>
+                    <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+                <button style="margin-top: 20px;">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme switcher logic
+        const themeToggle = document.getElementById('theme-toggle');
+        const currentTheme = localStorage.getItem('theme');
+        function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme); if (theme === 'dark') { themeToggle.checked = true; } else { themeToggle.checked = false; } }
+        if (currentTheme) { applyTheme(currentTheme); }
+        themeToggle.addEventListener('change', function() { let theme = this.checked ? 'dark' : 'light'; applyTheme(theme); localStorage.setItem('theme', theme); });
+    </script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GridCast AI - Supply Chain Optimization</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="loader-overlay" id="loader"><div class="spinner"></div></div>
+    <nav class="navbar">
+        <a href="{{ url_for('dashboard') }}" class="nav-brand">GridCast AI ⚡️</a>
+        <div class="nav-links">
+            {% if session.username %}
+                <span style="margin-right: 20px; color: var(--text-muted);">Welcome, <strong>{{ session.username }}</strong>!</span>
+                <a href="{{ url_for('dashboard') }}">Home</a>
+                <a href="{{ url_for('projects') }}">Projects</a>
+                <a href="{{ url_for('materials') }}">Materials</a>
+                <a href="{{ url_for('forecasting') }}" class="active">Optimization</a>
+                <a href="{{ url_for('settings') }}">Settings</a>
+                <a href="{{ url_for('logout') }}" style="background-color: #c9302c; color: white;">Logout</a>
+            {% endif %}
+            <div class="theme-switcher">
+                <span>☀️</span><label class="switch"><input type="checkbox" id="theme-toggle"><span class="slider"></span></label><span>🌙</span>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <header class="page-header">
+            <h1>Supply Chain Optimization Planner</h1>
+            <p>Enter project parameters to generate an optimal procurement strategy using AI.</p>
+        </header>
+        <div class="forecasting-tool">
+            <div class="form-container">
+                <h2>Optimization Inputs</h2>
+                <form id="forecast-form">
+                    <fieldset><legend>Project Details</legend>
+                        <div class="form-grid">
+                            <div class="form-group"><label for="stateSelect">State 🗺️</label><select id="stateSelect" required></select></div>
+                            <div class="form-group"><label for="citySelect">City 🏙️</label><select id="citySelect" required></select><input type="hidden" id="project_location" name="project_location"></div>
+                            <div class="form-group"><label for="geographic_location">Geographic Location</label><select id="geographic_location" required><option value="Hilly">Hilly</option><option value="Urban">Urban</option><option value="Rural">Rural</option></select></div>
+                            <div class="form-group"><label for="tower_type">Tower Type</label><select id="tower_type" required><option value="Dead-End">Dead-End</option><option value="Angle">Angle</option><option value="Tangent">Tangent</option></select></div>
+                            <div class="form-group"><label for="duration">Project Duration (Months)</label><input type="number" id="duration" value="24" step="1" required></div>
+                            <div class="form-group"><label for="budget">Budget (₹ Crores)</label><input type="number" id="budget" value="1535" step="1" required></div>
+                            <div class="form-group"><label for="seasonality">Primary Season</label><select id="seasonality" required><option value="Winter">Winter</option><option value="Monsoon">Monsoon</option><option value="Dry">Dry</option></select></div>
+                        </div>
+                    </fieldset>
+                    <fieldset><legend>Material & Cost Factors</legend>
+                        <div class="form-grid">
+                            <div class="form-group"><label for="material">Material Type</label><select id="material" required>{% for material in materials %}<option value="{{ material.id }}">{{ material.name }} ({{ material.unit }})</option>{% endfor %}</select></div>
+                            <div class="form-group"><label for="unit_price">Material Unit Price (₹)</label><input type="number" id="unit_price" step="1" required></div>
+                            <div class="form-group"><label for="lead_time">Material Lead Time (Days)</label><input type="number" id="lead_time" value="45" step="1" required></div>
+                            <div class="form-group"><label for="service_level">Service Level Req. (%)</label><input type="number" id="service_level" value="0.95" step="0.01" min="0" max="1" required></div>
+                            <div class="form-group"><label for="holding_cost">Holding Cost (%)</label><input type="number" id="holding_cost" value="0.20" step="0.01" min="0" max="1" required></div>
+                            <div class="form-group"><label for="transport_cost">Transport Cost (%)</label><input type="number" id="transport_cost" value="0.08" step="0.01" min="0" max="1" required></div>
+                        </div>
+                    </fieldset>
+                    <button type="submit">Optimize Procurement</button>
+                </form>
+            </div>
+            <div class="result-container">
+                <div class="result-area-overlay">
+                    <h2 style="text-align: center;">Optimal Procurement Strategy</h2>
+                    <div id="result-area"><p class="placeholder">Enter project details to see the optimization results.</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let inventoryChart = null;
+        document.addEventListener('DOMContentLoaded', function () {
+            const themeToggle = document.getElementById('theme-toggle');
+            const stateSelect = document.getElementById('stateSelect');
+            const citySelect = document.getElementById('citySelect');
+            const hiddenLocationInput = document.getElementById('project_location');
+            const materialSelect = document.getElementById('material');
+            const priceInput = document.getElementById('unit_price');
+            const forecastForm = document.getElementById('forecast-form');
+            
+            const stateCityMap = JSON.parse('{{ state_city_map_json | safe }}');
+            const basePricesUSD = JSON.parse('{{ material_prices_json | safe }}');
+            const inrRate = {{ current_inr_rate }};
+
+            const currentTheme = localStorage.getItem('theme');
+            function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme); if (theme === 'dark') { themeToggle.checked = true; } else { themeToggle.checked = false; } }
+            if (currentTheme) { applyTheme(currentTheme); }
+            themeToggle.addEventListener('change', function() { let theme = this.checked ? 'dark' : 'light'; applyTheme(theme); localStorage.setItem('theme', theme); });
+            
+            for (const state in stateCityMap) { const option = document.createElement('option'); option.value = state; option.textContent = state; stateSelect.appendChild(option); }
+            function updateCityDropdown() {
+                const selectedState = stateSelect.value; const cities = stateCityMap[selectedState] || []; citySelect.innerHTML = '';
+                if (cities.length > 0) { cities.forEach(city => { const option = document.createElement('option'); option.value = city; option.textContent = city; citySelect.appendChild(option); }); citySelect.disabled = false; }
+                else { const option = document.createElement('option'); option.textContent = 'No cities available'; citySelect.appendChild(option); citySelect.disabled = true; }
+                updateHiddenInput();
+            }
+            function updateHiddenInput() { hiddenLocationInput.value = citySelect.value; }
+            stateSelect.addEventListener('change', updateCityDropdown); citySelect.addEventListener('change', updateHiddenInput);
+            updateCityDropdown();
+
+            function updatePrice() {
+                const selectedMaterialId = materialSelect.value;
+                const basePrice = basePricesUSD[selectedMaterialId];
+                if (basePrice && inrRate) { priceInput.value = Math.round(basePrice * inrRate); }
+            }
+            materialSelect.addEventListener('change', updatePrice);
+            updatePrice();
+
+            forecastForm.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                const resultArea = document.getElementById('result-area');
+                const loader = document.getElementById('loader');
+                loader.style.display = 'flex';
+                const formData = {
+                    project_location: document.getElementById('project_location').value, geographic_location: document.getElementById('geographic_location').value, tower_type: document.getElementById('tower_type').value,
+                    material: document.getElementById('material').value, budget: document.getElementById('budget').value, duration: document.getElementById('duration').value,
+                    seasonality: document.getElementById('seasonality').value, unit_price: document.getElementById('unit_price').value, lead_time: document.getElementById('lead_time').value,
+                    service_level: document.getElementById('service_level').value, holding_cost: document.getElementById('holding_cost').value, transport_cost: document.getElementById('transport_cost').value,
+                };
+                try {
+                    const response = await fetch("{{ url_for('predict_demand') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
+                    if (!response.ok) throw new Error('Network response was not ok.');
+                    const data = await response.json();
+                    if (data.error) throw new Error(data.error);
+                    
+                    resultArea.innerHTML = `<div class="results-dashboard"><div class="kpi-grid"><div class="kpi-card"><h3>Projected Demand</h3><p>${Math.round(data.total_demand_quantity).toLocaleString('en-IN')} <span>Units</span></p></div><div class="kpi-card"><h3>Optimal Order Frequency</h3><p>~ ${Math.round(data.optimal_order_frequency_days)} <span>Days</span></p></div><div class="kpi-card total-cost"><h3>Projected Total Cost</h3><p>₹${Math.round(data.total_supply_chain_cost_inr).toLocaleString('en-IN')}</p></div></div><div class="chart-container-results"><canvas id="inventoryChart"></canvas></div></div>`;
+                    if (inventoryChart) { inventoryChart.destroy(); }
+                    
+                    const ctx = document.getElementById('inventoryChart').getContext('2d');
+                    const lightModeColor = '#6c757d'; const darkModeColor = '#c9d1d9';
+                    const newTheme = document.documentElement.getAttribute('data-theme');
+                    inventoryChart = new Chart(ctx, {
+                        type: 'bar', data: { labels: ['Safety Stock', 'Reorder Point', 'Economic Order Qty (EOQ)'], datasets: [{ label: 'Quantity (Units)', data: [data.safety_stock, data.reorder_point, data.eoq], backgroundColor: ['rgba(255, 193, 7, 0.7)', 'rgba(247, 147, 30, 0.7)', 'rgba(0, 90, 156, 0.7)'], borderColor: ['rgba(255, 193, 7, 1)', 'rgba(247, 147, 30, 1)', 'rgba(0, 90, 156, 1)'], borderWidth: 1, borderRadius: 5 }] },
+                        options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true, ticks: { color: newTheme === 'dark' ? darkModeColor : lightModeColor }, grid: { color: newTheme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' } }, y: { ticks: { color: newTheme === 'dark' ? darkModeColor : lightModeColor }, grid: { display: false } } }, plugins: { legend: { display: false }, title: { display: true, text: 'Inventory Policy Levels', color: newTheme === 'dark' ? darkModeColor : lightModeColor, font: { size: 16 } } } }
+                    });
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    resultArea.innerHTML = '<p class="placeholder" style="color: red;">Error: Could not generate optimization plan.</p>';
+                } finally {
+                    loader.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
