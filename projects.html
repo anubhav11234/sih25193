@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GridCast AI - Projects</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+    <a href="{{ url_for('dashboard') }}" class="nav-brand">GridCast AI ⚡️</a>
+    <div class="nav-links">
+        {% if session.username %}
+            <span style="margin-right: 20px; color: var(--text-muted);">Welcome, <strong>{{ session.username }}</strong>!</span>
+            <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">Home</a>
+            <a href="{{ url_for('projects') }}" class="{% if request.endpoint == 'projects' %}active{% endif %}">Projects</a>
+            <a href="{{ url_for('materials') }}" class="{% if request.endpoint == 'materials' %}active{% endif %}">Materials</a>
+            <a href="{{ url_for('forecasting') }}" class="{% if request.endpoint == 'forecasting' %}active{% endif %}">Optimization</a>
+            <a href="{{ url_for('settings') }}" class="{% if request.endpoint == 'settings' %}active{% endif %}">Settings</a>
+            <a href="{{ url_for('logout') }}" style="background-color: #c9302c; color: white;">Logout</a>
+        {% endif %}
+        <div class="theme-switcher">
+            <span>☀️</span><label class="switch"><input type="checkbox" id="theme-toggle"><span class="slider"></span></label><span>🌙</span>
+        </div>
+    </div>
+</nav>
+    <div class="container">
+        <header class="page-header">
+            <h1>Project Dashboard</h1>
+            <p>Track all ongoing, planned, and completed projects across the nation.</p>
+        </header>
+        
+        <div class="search-container">
+            <input type="text" id="projectSearch" placeholder="🔍 Search for projects by name or status...">
+        </div>
+
+        <section>
+            <table id="projectTable">
+                <thead>
+                    <tr>
+                        <th>Project Name</th>
+                        <th>Status</th>
+                        <th>Budget (₹ Cr)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in projects %}
+                    <tr>
+                        <td><strong>{{ project.name }}</strong></td>
+                        <td>
+                            <span class="status-badge status-{{ project.status.lower() }}">
+                                {% if project.status == 'Ongoing' %}
+                                    ⚙️ Ongoing
+                                {% elif project.status == 'Planning' %}
+                                    📝 Planning
+                                {% else %}
+                                    ✅ Completed
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>₹{{ project.budget }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // JavaScript for live filtering the project table
+            const searchInput = document.getElementById('projectSearch');
+            const table = document.getElementById('projectTable');
+            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+            searchInput.addEventListener('keyup', function() {
+                const filter = searchInput.value.toUpperCase();
+
+                for (let i = 0; i < rows.length; i++) {
+                    const cells = rows[i].getElementsByTagName('td');
+                    let textContent = '';
+                    for (let j = 0; j < cells.length; j++) {
+                        if (cells[j]) {
+                            textContent += cells[j].textContent || cells[j].innerText;
+                        }
+                    }
+
+                    if (textContent.toUpperCase().indexOf(filter) > -1) {
+                        rows[i].style.display = "";
+                    } else {
+                        rows[i].style.display = "none";
+                    }
+                }
+            });
+
+            // --- THIS IS THE FIX ---
+            // Theme Switcher Logic
+            const themeToggle = document.getElementById('theme-toggle');
+            const currentTheme = localStorage.getItem('theme');
+
+            function applyTheme(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                if (theme === 'dark') {
+                    themeToggle.checked = true;
+                } else {
+                    themeToggle.checked = false;
+                }
+            }
+
+            if (currentTheme) {
+                applyTheme(currentTheme);
+            }
+
+            themeToggle.addEventListener('change', function() {
+                let theme = 'light';
+                if (this.checked) {
+                    theme = 'dark';
+                }
+                applyTheme(theme);
+                localStorage.setItem('theme', theme);
+            });
+            // --- END OF FIX ---
+        });
+    </script>
+</body>
+</html>
